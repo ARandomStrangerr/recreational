@@ -1,11 +1,13 @@
 #include <sys/socket.h>
+#include <stddef.h>
+#include <stdlib.h>
 
 
 typedef enum {
 	IPV4,
 	IPV6,
 	LOCAL_HOST
-} COMMUNICATION_TYPE;
+} ADDRESS_FAMILY;
 
 
 typedef enum {
@@ -27,4 +29,4 @@ typedef struct client_socket client_socket;
  * @param PROTOCOL_FAMILY choosing between TCP vs UDP
  * @param int port to bind to
  */
-server_socket* create_server_socket(PROTOCOL_FAMILY, COMMUNICATION_TYPE, int);
+server_socket *create_server_socket(PROTOCOL_FAMILY, ADDRESS_FAMILY, int);

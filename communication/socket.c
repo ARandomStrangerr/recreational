@@ -1,23 +1,40 @@
 #include "socket.h"
 
 
-typedef struct server_socket {
+struct server_socket {
+	int socket_df;
+};
 
-} server_socket;
 
+server_socket *create_server_socket(PROTOCOL_FAMILY protocol_type, ADDRESS_FAMILY address_type, int port){
+	int sys_address_type;
+	int sys_protocol_type;
 
-server_socket* create_server_socket(PROTOCOL_FAMILY protocol, COMMUNICATION_TYPE type, int port){
-	int sys_domain;
-	int sys_type;
+	switch (address_type) {
+		case IPV4:
+			sys_address_type = AF_INET;
+			break;
+		case IPV6:
+			sys_address_type = AF_INET6;
+			break;
+		case LOCAL_HOST:
+			sys_address_type = AF_LOCAL;
+			break;
+	}
 
-	switch (protocol){
+	switch (protocol_type) {
 		case TCP:
-			sys_domain = AF_INET;
+			sys_protocol_type = SOCK_STREAM;
 			break;
 		case UDP:
-			sys_domain = AF_INET6;
+			sys_protocol_type = SOCK_DGRAM;
 			break;
-		default:
-			return NULL;
 	}
+	
+	int socket_df = socket(address_type, protocol_type, 0);
+
+	server_socket *server_socket = malloc(sizeof(server_socket));
+	server_socket -> socket_df = socket_df;
+
+	return server_socket;
 }
