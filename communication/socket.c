@@ -32,6 +32,9 @@ server_socket *create_server_socket(PROTOCOL_FAMILY protocol_type, ADDRESS_FAMIL
 	}
 	
 	int socket_df = socket(sys_address_type, sys_protocol_type, 0);
+	if (socket_df < 0){
+		return  NULL;
+	}
 
 	server_socket *socket = malloc(sizeof(server_socket));
 	socket -> socket_df = socket_df;
