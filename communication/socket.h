@@ -1,7 +1,9 @@
 #include <sys/socket.h>
 #include <stddef.h>
 #include <stdlib.h>
-
+#include <string.h>
+#include <netinet/in.h>
+#include <unistd.h>
 
 typedef enum {
 	IPV4,
