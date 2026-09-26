@@ -31,10 +31,10 @@ server_socket *create_server_socket(PROTOCOL_FAMILY protocol_type, ADDRESS_FAMIL
 			break;
 	}
 	
-	int socket_df = socket(address_type, protocol_type, 0);
+	int socket_df = socket(sys_address_type, sys_protocol_type, 0);
 
-	server_socket *server_socket = malloc(sizeof(server_socket));
-	server_socket -> socket_df = socket_df;
+	server_socket *socket = malloc(sizeof(server_socket));
+	socket -> socket_df = socket_df;
 
-	return server_socket;
+	return socket;
 }
