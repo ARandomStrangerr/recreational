@@ -1,5 +1,5 @@
 #include "socket.h"
-#include <netinet/in.h>
+#include <string.h>
 
 
 struct server_socket {
@@ -7,6 +7,7 @@ struct server_socket {
 	int port;
 	PROTOCOL_FAMILY protocol_type;
 	ADDRESS_FAMILY address_type;
+	int max_queue;
 };
 
 
@@ -64,7 +65,8 @@ server_socket *create_server_socket(PROTOCOL_FAMILY protocol_type, ADDRESS_FAMIL
 			addr_len = sizeof(server_addr6);
 			break;
 		default:
-		    // not supported yet
+			// not supported yet
+			close(socket_df);
 			return NULL;
 	}
 
@@ -85,4 +87,13 @@ server_socket *create_server_socket(PROTOCOL_FAMILY protocol_type, ADDRESS_FAMIL
 	new_socket -> address_type = address_type;
 
 	return new_socket;
+}
+
+
+int start_listen(server_socket *soc, int max_queue){
+	if (soc -> protocol_type != TCP){
+		return -1;
+	}
+	soc -> max_queue = max_queue;
+	return listen(soc -> socket_df, max_queue);
 }
