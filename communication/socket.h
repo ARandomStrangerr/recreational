@@ -1,27 +1,24 @@
-#include <sys/socket.h>
-#include <stddef.h>
-#include <stdlib.h>
-#include <string.h>
-#include <netinet/in.h>
-#include <unistd.h>
-
-typedef enum {
-	IPV4,
-	IPV6,
-	LOCAL_HOST
-} ADDRESS_FAMILY;
+#ifndef SOCKET_H
+#define SOCKET_H
 
 
 typedef enum {
-	TCP,
-	UDP
-} PROTOCOL_FAMILY;
+	SOC_IPV4,
+	SOC_IPV6,
+	SOC_LOCAL_HOST
+} SOC_ADDRESS_FAMILY;
 
 
-typedef struct server_socket server_socket;
+typedef enum {
+	SOC_TCP,
+	SOC_UDP
+} SOC_PROTOCOL_FAMILY;
 
 
-typedef struct client_socket client_socket;
+typedef struct soc_server_socket soc_server_socket;
+
+
+typedef struct soc_client_socket soc_client_socket;
 
 
 /**
@@ -32,7 +29,7 @@ typedef struct client_socket client_socket;
  * @param int port to bind to
  * @return instant of server_socket that is binded to given port, NULL if the code fail
  */
-server_socket *create_server_socket(PROTOCOL_FAMILY, ADDRESS_FAMILY, int);
+soc_server_socket *soc_create_server_socket(SOC_PROTOCOL_FAMILY, SOC_ADDRESS_FAMILY, int);
 
 
 /**
@@ -42,11 +39,29 @@ server_socket *create_server_socket(PROTOCOL_FAMILY, ADDRESS_FAMILY, int);
  * @params max_queue how may incoming connection can queue at the same time
  * @return negative number if fail to initiate the listening process
  */
-int start_listen(server_socket*, int);
+int soc_start_listen(soc_server_socket*, int);
 
 /**
  * @brief accept an incoming connection
  *
  * @params server_soc instance of server_socket contains socket_df
  */
-client_socket *accept_client(server_socket *);
+soc_client_socket *soc_accept_client(soc_server_socket *);
+
+/**
+ * @brief write a string into socket file descriptor
+ *
+ * @params client_socket struct contains socket_df
+ * @params str a string to send to client
+ */
+int soc_write(soc_client_socket *, const char *);
+
+/**
+ * @brief read a string from socket file descriptor
+ *
+ * @params client_socket struct contains socket_df
+ * @returns a string
+ */
+char *soc_read(soc_client_socket *);
+
+#endif

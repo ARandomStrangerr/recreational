@@ -1,34 +1,47 @@
 #include "socket.h"
+#include <sys/socket.h>
+#include <stddef.h>
+#include <stdlib.h>
 #include <string.h>
+#include <netinet/in.h>
+#include <unistd.h>
 
 
-struct server_socket {
+struct soc_server_socket {
 	int socket_df;
 	int port;
-	PROTOCOL_FAMILY protocol_type;
-	ADDRESS_FAMILY address_type;
+	SOC_PROTOCOL_FAMILY protocol_type;
+	SOC_ADDRESS_FAMILY address_type;
 	int max_queue;
 };
 
 
-server_socket *create_server_socket(PROTOCOL_FAMILY protocol_type, ADDRESS_FAMILY address_type, int port){
+struct soc_client_socket {
+	int socket_df;
+	SOC_ADDRESS_FAMILY address_type;
+};
+
+
+soc_server_socket *soc_create_server_socket(SOC_PROTOCOL_FAMILY protocol_type, SOC_ADDRESS_FAMILY address_type, int port){
 	int sys_protocol_type;
 	int sys_family_type;
 
 	switch (protocol_type) {
-		case TCP:
+		case SOC_TCP:
 			sys_protocol_type = SOCK_STREAM;
 			break;
-		case UDP:
+		case SOC_UDP:
 			sys_protocol_type = SOCK_DGRAM;
 			break;
+		default:
+			return NULL;
 	}
 
 	switch (address_type) {
-		case IPV4:
+		case SOC_IPV4:
 			sys_family_type = AF_INET;
 			break;
-		case IPV6:
+		case SOC_IPV6:
 			sys_family_type = AF_INET6;
 			break;
 		default:
@@ -48,7 +61,7 @@ server_socket *create_server_socket(PROTOCOL_FAMILY protocol_type, ADDRESS_FAMIL
 	struct sockaddr_in6 server_addr6;
 	socklen_t addr_len = 0;
 	switch (address_type) {
-		case IPV4:
+		case SOC_IPV4:
 			memset(&server_addr, 0, sizeof(server_addr));
 			server_addr.sin_family = sys_family_type;
 			server_addr.sin_port = htons(port);
@@ -56,7 +69,7 @@ server_socket *create_server_socket(PROTOCOL_FAMILY protocol_type, ADDRESS_FAMIL
 			addr = (struct sockaddr*) &server_addr;
 			addr_len = sizeof(server_addr);
 			break;
-		case IPV6:
+		case SOC_IPV6:
 			memset(&server_addr6, 0, sizeof(server_addr6));
 			server_addr6.sin6_family = sys_family_type;
 			server_addr6.sin6_port = htons(port);
@@ -76,7 +89,7 @@ server_socket *create_server_socket(PROTOCOL_FAMILY protocol_type, ADDRESS_FAMIL
 		return NULL;
 	}
 
-	server_socket *new_socket = malloc(sizeof(server_socket));
+	soc_server_socket *new_socket = malloc(sizeof(soc_server_socket));
 	if (new_socket == NULL) {
 		close(socket_df);
 		return NULL;
@@ -85,15 +98,44 @@ server_socket *create_server_socket(PROTOCOL_FAMILY protocol_type, ADDRESS_FAMIL
 	new_socket -> port = port;
 	new_socket -> protocol_type = protocol_type;
 	new_socket -> address_type = address_type;
-
+	new_socket -> max_queue = -1;
 	return new_socket;
 }
 
 
-int start_listen(server_socket *soc, int max_queue){
-	if (soc -> protocol_type != TCP){
+int soc_start_listen(soc_server_socket *soc, int max_queue){
+	if (soc == NULL || soc -> protocol_type != SOC_TCP){
+		return -1;
+	}
+	int listen_status = listen(soc -> socket_df, max_queue);
+	if (listen_status < 0){
 		return -1;
 	}
 	soc -> max_queue = max_queue;
-	return listen(soc -> socket_df, max_queue);
+	return listen_status;
+}
+
+
+soc_client_socket *soc_accept_client(soc_server_socket *server_soc){
+	if (server_soc == NULL || server_soc -> protocol_type != SOC_TCP){
+		return NULL;
+	}
+
+	struct sockaddr_storage client_addr;
+	memset(&client_addr, 0, sizeof(client_addr));
+	socklen_t soc_len = sizeof(client_addr);
+	int soc_df = accept(server_soc -> socket_df, (struct sockaddr*) &client_addr, &soc_len);
+	if (soc_df < 0){
+		return NULL;
+	}
+
+	soc_client_socket *client_soc = malloc(sizeof(soc_client_socket));
+	if (client_soc == NULL) {
+		close(soc_df);
+		return NULL;
+	}
+	client_soc -> socket_df = soc_df;
+	client_soc -> address_type = server_soc -> address_type;
+
+	return client_soc;
 }
