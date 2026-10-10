@@ -1,10 +1,10 @@
 #include "socket.h"
+#include <stdint.h>
 #include <sys/socket.h>
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <netinet/in.h>
-#include <unistd.h>
 
 
 struct soc_server_socket {
@@ -138,4 +138,41 @@ soc_client_socket *soc_accept_client(soc_server_socket *server_soc){
 	client_soc -> address_type = server_soc -> address_type;
 
 	return client_soc;
+}
+
+int soc_write(const soc_client_socket *soc, const void* data, size_t data_len) {
+	if (soc == NULL || data == NULL || data_len == 0){
+		return -1;
+	}
+
+	const uint8_t *byte_ptr = (const uint8_t *) data;
+	size_t sent_bytes = 0;
+
+	while (sent_bytes < data_len){
+		ssize_t res = write(soc -> socket_df, byte_ptr + sent_bytes, data_len - sent_bytes);
+		if (res <= 0 ) {
+			return -1;
+		}
+		sent_bytes += res;
+	}
+
+	return 1;
+}
+
+int soc_read(const soc_client_socket *soc, void *buffer, size_t data_len) {
+	if (soc == NULL || buffer == NULL || data_len == 0) {
+		return -2;
+	}
+	uint8_t *buffer_byte_ptr = (uint8_t *) buffer;
+	size_t read_bytes = 0;
+
+	while (read_bytes < data_len){
+		ssize_t res = read (soc -> socket_df, buffer_byte_ptr + read_bytes, data_len - read_bytes);
+		if (res <= 0){
+			return -1;
+		}
+		read_bytes += res;
+	}
+
+	return 1;
 }
