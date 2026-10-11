@@ -45,11 +45,21 @@ soc_server_socket *soc_create_server_socket(SOC_PROTOCOL_FAMILY, SOC_ADDRESS_FAM
 int soc_start_listen(soc_server_socket*, int);
 
 /**
- * @brief accept an incoming connection
+ * @brief accept an incoming connection.
+ * call to this functions will be made outside of this file. opaque ptr will prevent it initiate soc_client_socket.
+ * passing double pointer to point to the malloc ptr.
+ * MALLOC IS CALLED, MUST BE FREE AFTERWARD.
  *
- * @param soc_server_soc instance of server_socket contains socket_df
+ * @param soc_server_socket instance of server_socket contains socket_df
+ * @param soc_client_socket pointer-pointer-soc_client_socket
+ *
+ * @return
+ * 1 if the process is sucess
+ * -1 is the params fail the check
+ * -2 if fail to create file descriptor for client socket
+ * -3 if fail to malloc soc_client_socket
  */
-soc_client_socket *soc_accept_client(soc_server_socket *);
+int soc_create_accept_client(soc_server_socket *, soc_client_socket **);
 
 /**
  * @brief write raw bytes into socket file descriptor

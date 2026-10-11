@@ -116,9 +116,9 @@ int soc_start_listen(soc_server_socket *soc, int max_queue){
 }
 
 
-soc_client_socket *soc_accept_client(soc_server_socket *server_soc){
+int soc_create_accept_client(soc_server_socket *server_soc, soc_client_socket **client_soc){
 	if (server_soc == NULL || server_soc -> protocol_type != SOC_TCP){
-		return NULL;
+		return -1;
 	}
 
 	struct sockaddr_storage client_addr;
@@ -126,18 +126,17 @@ soc_client_socket *soc_accept_client(soc_server_socket *server_soc){
 	socklen_t soc_len = sizeof(client_addr);
 	int soc_df = accept(server_soc -> socket_df, (struct sockaddr*) &client_addr, &soc_len);
 	if (soc_df < 0){
-		return NULL;
+		return -2;
 	}
 
-	soc_client_socket *client_soc = malloc(sizeof(soc_client_socket));
-	if (client_soc == NULL) {
+	*client_soc = malloc(sizeof(soc_client_socket));
+	if (*client_soc == NULL) {
 		close(soc_df);
-		return NULL;
+		return -3;
 	}
-	client_soc -> socket_df = soc_df;
-	client_soc -> address_type = server_soc -> address_type;
-
-	return client_soc;
+	(*client_soc) -> socket_df = soc_df;
+	(*client_soc) -> address_type = server_soc -> address_type;
+	return 1;
 }
 
 int soc_write(const soc_client_socket *soc, const void* data, size_t data_len) {
