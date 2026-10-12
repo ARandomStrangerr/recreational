@@ -78,8 +78,31 @@ int soc_write(const soc_client_socket *, const void *, size_t);
  * @param soc_client_socket struct contains socket_df
  * @param buffer to write on
  * @param read_byte number of byte to read
- * @return 1 if sucessfully read from the socket, -1 if socket is closed, -2 if the parametter check isn't qualified
+ * @return 1 if sucessfully read from the socket
+ * -1 if the parametter check isn't qualified
+ * -2 if socket is closed
  */
 int soc_read(const soc_client_socket *, void *, size_t);
+
+/**
+ * @brief
+ * free the client socket.
+ *
+ * @param client_soc *
+ * ptr to client socket
+ */
+void soc_client_socket_free(soc_client_socket *);
+
+
+/**
+ * @breif
+ * free the server socket
+ *
+ * @param soc_server_socket
+ *
+ * @param server_soc *
+ * ptr to server socket
+ */
+void soc_server_socket_free(soc_server_socket *);
 
 #endif

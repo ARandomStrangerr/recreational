@@ -160,7 +160,7 @@ int soc_write(const soc_client_socket *soc, const void* data, size_t data_len) {
 
 int soc_read(const soc_client_socket *soc, void *buffer, size_t data_len) {
 	if (soc == NULL || buffer == NULL || data_len == 0) {
-		return -2;
+		return -1;
 	}
 	uint8_t *buffer_byte_ptr = (uint8_t *) buffer;
 	size_t read_bytes = 0;
@@ -168,10 +168,24 @@ int soc_read(const soc_client_socket *soc, void *buffer, size_t data_len) {
 	while (read_bytes < data_len){
 		ssize_t res = read (soc -> socket_df, buffer_byte_ptr + read_bytes, data_len - read_bytes);
 		if (res <= 0){
-			return -1;
+			return -2;
 		}
 		read_bytes += res;
 	}
 
 	return 1;
+}
+
+void soc_client_socket_free(soc_client_socket *client_soc) {
+	if (client_soc == NULL) return;
+	close(client_soc -> socket_df);
+	free(client_soc);
+	return;
+}
+
+void soc_server_socket_free(soc_server_socket *server_soc) {
+	if (server_soc == NULL) return;
+	close(server_soc -> socket_df);
+	free(server_soc);
+	return;
 }
