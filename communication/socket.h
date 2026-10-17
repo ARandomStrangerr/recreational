@@ -105,4 +105,38 @@ void soc_client_socket_free(soc_client_socket *);
  */
 void soc_server_socket_free(soc_server_socket *);
 
+/**
+ * @brief
+ * get the socket file descriptor. due to the opaque is too good.
+ *
+ * @param soc - socket struct to extract socket file descriptor
+ *
+ * @return socket descriptor
+ * -1 if the socket struct is NULL
+ */
+int soc_get_client_fd(const soc_client_socket *);
+
+/**
+ * @brief
+ * create a client socket to a given host
+ *
+ * @param soc
+ * - instance of client socket to malloc
+ * @param soc_protocol
+ * - TCP / UDP type
+ * @param soc_addr
+ * - IpV4 / IPv6 type
+ * @param arr
+ * - IP address of the host
+ * @param port
+ * - port to connect of the host
+ *
+ * @return 1 if nothing wrong
+ * -1 when params check fail
+ * -2 when fail to create socket_df
+ * -3 when fail to convert string IP addr to binary
+ * -4 when fail to TCP handshake
+ * -5 when fail to malloc soc_client_socket
+ */
+int soc_create_connect_client_socket(soc_client_socket **, SOC_PROTOCOL_FAMILY, SOC_ADDRESS_FAMILY, const char *, int);
 #endif
