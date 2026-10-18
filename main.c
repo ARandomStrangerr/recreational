@@ -1,6 +1,8 @@
 #include "communication/socket.h"
 #include "orchestrator/socket_management.h"
 #include <assert.h>
+#include <string.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <string.h>
 #include <pthread.h>
@@ -21,12 +23,27 @@ void *test_server_socket(void *arg) {
 	assert(accept_status > 0);
 	printf("accepted a client socket");
 
+	char *str = "Hello from server";
+	size_t size = 18;
+	int write_status = soc_write(client_soc, str, size);
+
 	return NULL;
 }
 
 void *test_client_socket_thread(void* arg) {
 	soc_client_socket *client_soc;
 	int create_socket_status = soc_create_connect_client_socket(&client_soc, SOC_TCP, SOC_IPV4, "127.0.0.1", 8080);
+	assert(create_socket_status > 0);
+	printf("connected to server socket");
+
+	uint8_t b[18];
+	soc_read(client_soc, &b, 18);
+
+	char str[19];
+	memcpy(str, b, 18);
+	str[18] = '\0';
+	printf("Received from server: %s/n", str);
+
 	return NULL;
 }
 

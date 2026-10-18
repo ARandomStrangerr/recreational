@@ -64,9 +64,9 @@ int soc_create_accept_client(soc_server_socket *, soc_client_socket **);
 /**
  * @brief write raw bytes into socket file descriptor
  *
- * @param client_socket struct contains socket_df
- * @param data data to send
- * @param data_len number of byte of the data
+ * @param client_socket ~ struct contains socket_df
+ * @param data ~ data to send
+ * @param data_len ~ number of byte of the data
  * @return 1 if the writing is completed -1 if there is error when we send the bytes
  */
 int soc_write(const soc_client_socket *, const void *, size_t);
