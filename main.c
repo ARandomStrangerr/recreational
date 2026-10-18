@@ -27,6 +27,11 @@ void *test_server_socket(void *arg) {
 	size_t size = 18;
 	int write_status = soc_write(client_soc, str, size);
 
+	sleep(1);
+
+	soc_client_socket_free(client_soc);
+	soc_server_socket_free(server_soc);
+
 	return NULL;
 }
 
@@ -43,6 +48,8 @@ void *test_client_socket_thread(void* arg) {
 	memcpy(str, b, 18);
 	str[18] = '\0';
 	printf("Received from server: %s/n", str);
+
+	soc_client_socket_free(client_soc);
 
 	return NULL;
 }
