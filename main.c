@@ -19,7 +19,6 @@ void *test_server_socket(void *arg) {
 
 	soc_client_socket *client_soc;
 	int accept_status = soc_create_accept_client(server_soc, &client_soc);
-	printf("%d\n", accept_status);
 	assert(accept_status > 0);
 	printf("accepted a client socket");
 
@@ -39,7 +38,7 @@ void *test_client_socket_thread(void* arg) {
 	soc_client_socket *client_soc;
 	int create_socket_status = soc_create_connect_client_socket(&client_soc, SOC_TCP, SOC_IPV4, "127.0.0.1", 8080);
 	assert(create_socket_status > 0);
-	printf("connected to server socket");
+	printf("connected to server socket\n");
 
 	uint8_t b[18];
 	soc_read(client_soc, &b, 18);
@@ -47,7 +46,7 @@ void *test_client_socket_thread(void* arg) {
 	char str[19];
 	memcpy(str, b, 18);
 	str[18] = '\0';
-	printf("Received from server: %s/n", str);
+	printf("Received from server: %s\n", str);
 
 	soc_client_socket_free(client_soc);
 

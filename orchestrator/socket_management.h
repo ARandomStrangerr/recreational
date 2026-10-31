@@ -7,10 +7,10 @@
 
 typedef struct __attribute__((__packed__)) {
     uint32_t correlation_id;
-    uint8_t target_service;
-    uint8_t message_type;
+    uint32_t target_service_size;
     uint32_t payload_size;
 } soc_management_header;
+
 
 /**
  * @brief
@@ -61,8 +61,22 @@ void *soc_management_acceptor(void *);
 /**
  * @brief
  * function complies with thread signature.
- * this function will handle handshake.
+ * this function will handle handshake from unregistered sockets.
  */
-void *soc_management_handshake_checker(void *);
+void *soc_management_handshake(void *);
+
+/**
+ * @brief
+ * function complies with thread signature.
+ * this function will handle request from registered sockets.
+ */
+void *soc_management_request_hander(void *);
+
+/**
+ * @brief
+ * function complies with thread signature.
+ * this function listen to verified sockets and have a thread handle the request.
+ */
+void *soc_management_router(void *);
 
 #endif
