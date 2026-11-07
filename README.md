@@ -1,91 +1,128 @@
-# Recreational: a C service orchestrator
+# C Service Orchestrator
 
-A personal project exploring socket programming, message framing, and service orchestration in C.
+A TCP message broker in C with named service registration, hash-table lookup, length-prefixed messages, and module-to-module forwarding.
 
-I enjoy building things from the underlying pieces. This project gives me a reason to work through connections, memory ownership, event notification, and request routing myself. The idea comes from a Java orchestration system I built for an earlier job; this repository is a separate C experiment.
+**Milestone reached — 7 November 2026:** the blocking prototype forwards a message from one registered module to another through the central broker. The local demo registers `test_module_1` and `test_module_2`, looks up the destination by name using `uthash`, and delivers the payload to module 2.
 
-The goal is for services to connect to a central process, register their names and required parameters, and receive requests addressed to them. Routing a request through multiple services is part of the intended design.
+This personal project explores POSIX sockets, memory ownership, message framing, event notification, and service coordination from first principles. It draws on a Java orchestration system I built for an earlier job. This repository is a separate C implementation.
 
-**Current status:** the TCP client/server example runs. The orchestrator is still being built, with partial handshake code, a proposed service registry, and placeholders for request handling and routing.
+## Working milestone
 
-## What is here
+The current manual demo exercises the complete forwarding path:
 
-| Component | Current state |
+1. The broker starts its listener, acceptor, handshake thread, and request-handler thread.
+2. Two modules connect over separate TCP connections and register their names.
+3. Module 1 sends a destination name, a payload length, and the payload.
+4. The broker uses `HASH_FIND_STR` to retrieve the destination's registered socket.
+5. Module 2 receives and prints the forwarded payload.
+
+The receiver prints:
+
+```text
+hello 1234 from module 1
+```
+
+The demo runs the broker and both modules as pthreads in one process, with TCP connections through `127.0.0.1:8080`. It demonstrates one-way forwarding between two named modules. Bidirectional request/response correlation and multi-service workflows are planned extensions.
+
+## Implemented components
+
+| Component | Current behavior |
 | --- | --- |
-| Socket wrapper | Server creation, bind/listen/accept, outgoing connections, blocking reads and writes, and socket cleanup. Uses opaque socket types. |
-| TCP example | A server and client run in separate pthreads and exchange a fixed greeting over IPv4. |
-| Connection management | Code for accepting connections and watching readable sockets with `kqueue`. Separate queues represent connections before and after registration. |
-| Service handshake | A partial parser reads a service name and parameter description. Registration is not connected into a working application yet. |
-| Service registry | An entry structure and function declarations exist. Storage, lookup, removal, and ownership rules still need implementation. |
-| Request routing | A request header is declared. The router and request handler are unfinished. |
+| Socket wrapper | Opaque client/server types, server creation, bind/listen/accept, outgoing connections, blocking reads/writes, and socket cleanup functions. |
+| Connection acceptance | Accepts TCP clients and registers their sockets with the unverified `kqueue`. |
+| Service handshake | Receives the module name and parameter-description bytes, then registers the module's name and socket. |
+| Service registry | Uses `uthash` to associate module names with socket entries. |
+| Event notification | Uses separate unverified and verified `kqueue` queues to notify the handshake and request-handler threads of readable sockets. |
+| Message framing | Reads destination and payload fields using length prefixes. |
+| Forwarding | Resolves the destination by name and sends the payload length and payload to that module. |
+| Demo | Includes a basic TCP greeting exchange followed by the two-module broker demonstration. |
 
-The socket wrapper also contains IPv6 paths. The included example exercises IPv4 TCP only.
+The socket wrapper contains IPv6 paths. The current demo exercises IPv4 TCP.
 
-## Run the socket example
+## Build and run
 
 Requirements:
 
+- macOS or a BSD system providing `kqueue` and `<sys/event.h>`.
 - A C compiler such as Clang or GCC.
 - POSIX sockets and pthreads.
+- `uthash.h` available at `structure/uthash.h`.
 - Port `8080` available.
 
 From the repository root:
 
 ```sh
 cc -std=c11 -Wall -Wextra -pthread \
-  communication/socket.c main.c \
+  communication/socket.c \
+  orchestrator/socket_management.c \
+  main.c \
   -o socket-demo
 
 ./socket-demo
 ```
 
-This builds the socket wrapper and the example without compiling the unfinished orchestrator. The command was checked on Linux: compilation succeeded with unused-variable/parameter warnings, and the client received the greeting.
+Compile all three source files because `main.c` now exercises the orchestrator as well as the socket wrapper. The active registry is implemented inside `socket_management.c`.
 
-The program starts a server thread, waits one second, starts a client that connects to `127.0.0.1:8080`, and prints output containing:
+This milestone was confirmed through the author's manual local run. The demo currently uses sleeps for startup and registration timing, and `main()` returns exit status `1` even after the expected payload is printed. It is a development harness, with deterministic startup, shutdown, and automated assertions still to be added. The server binds to all IPv4 interfaces while the demo clients use loopback.
 
-```text
-Received from server: Hello from server
-```
+The current event backend uses `kqueue`. Linux support requires a compatible backend or a future `epoll` implementation.
 
-The example currently returns exit status `1` even after a successful exchange because `main()` ends with `return 1;`. It also uses a sleep for startup coordination, so it is a small demonstration rather than a reliable automated test. The server binds to all IPv4 interfaces, although the example client connects through loopback.
+## Current message format
 
-### Full build status
+### Registration
 
-The supplied Makefile includes `orchestrator/socket_management.c`. That file directly uses `<sys/event.h>` and `kqueue`, targeting macOS/BSD APIs. A Linux `epoll` implementation is not present, despite comments in the header mentioning it.
+A connecting module sends:
 
-The orchestrator also calls `soc_storage_append`, which currently has a declaration but no implementation. The full build needs that implementation before it can link. Use the command above to run the existing socket example.
+1. A `soc_management_handshake_header` containing `module_name_length` and `module_params_length`.
+2. Exactly that many module-name bytes.
+3. Exactly that many parameter-description bytes.
+
+The receiver appends local string terminators. Parameter descriptions are received during registration; parameter-driven routing remains future work.
+
+### Module-to-broker request
+
+The working demo uses this sequence:
+
+| Field | Representation |
+| --- | --- |
+| Destination-name length | Native C `size_t` |
+| Destination name | The stated number of bytes, excluding a terminating NUL |
+| Payload length | Native C `size_t` |
+| Payload | The stated number of bytes |
+
+### Broker-to-module delivery
+
+The broker sends the payload length as a native `size_t`, followed by the payload bytes. The receiving demo appends `'\0'` before printing its text payload.
+
+The implementation sends native C representations directly. A portable wire format with fixed-width fields, defined byte order, and versioning is future work. The declared `soc_management_header` with correlation and size fields is an earlier protocol proposal; the current demonstration uses the framing above.
+
+## Current limitations
+
+- **Blocking transfers.** Socket reads and writes loop over partial transfers until the requested byte count is reached. A client that stalls mid-message, or a destination that stops reading, can hold up the thread handling it.
+- **Validation and failure handling.** Length limits, allocation checks, read/write-result checks, and missing-destination handling need to be completed before arbitrary input is supported.
+- **Registration timing and synchronization.** The demo uses a delay before sending to the second module. Registration acknowledgements and synchronization of registry access across threads remain to be implemented.
+- **Connection lifecycle.** Disconnect handling, registry removal, string ownership, and orderly thread shutdown need further work. The current handshake EOF path still frees a socket before passing it to the queue-removal helper.
+- **Scope of validation.** The milestone is a manual local forwarding demonstration. Throughput, multi-machine operation, and resilience under concurrent or malformed traffic have not been measured.
+- **Planned capabilities.** TLS, authentication, replica selection, round-robin balancing, retries, delivery guarantees, and automatic response routing remain future work.
+
+## Next milestones
+
+1. Add basic logging for registration, lookup, forwarding, disconnects, and system-call failures.
+2. Complete input validation, error handling, and connection cleanup.
+3. Add persistent per-connection receive state and nonblocking reads.
+4. Queue outgoing data and resume partial writes on write-readiness events.
+5. Enforce per-client handshake deadlines and replace sleep-based coordination with explicit readiness.
+6. Add repeatable tests covering partial messages, invalid lengths, unavailable destinations, disconnects, and slow clients.
+7. Define portable framing, correlation IDs, and request/response behavior.
 
 ## Source layout
 
 | File | Purpose |
 | --- | --- |
 | [`communication/socket.h`](communication/socket.h) | Public socket API and opaque types. |
-| [`communication/socket.c`](communication/socket.c) | POSIX socket operations and blocking byte-transfer loops. |
-| [`orchestrator/socket_management.h`](orchestrator/socket_management.h) | Management API and proposed request header. |
-| [`orchestrator/socket_management.c`](orchestrator/socket_management.c) | Acceptor, `kqueue` registration, partial handshake, and routing placeholders. |
-| [`orchestrator/socket_storage.h`](orchestrator/socket_storage.h) | Proposed registry entry containing a socket, service name, and parameter description. |
-| [`main.c`](main.c) | Threaded TCP greeting example. |
+| [`communication/socket.c`](communication/socket.c) | POSIX socket operations and blocking transfer loops. |
+| [`orchestrator/socket_management.h`](orchestrator/socket_management.h) | Management API and protocol declarations. |
+| [`orchestrator/socket_management.c`](orchestrator/socket_management.c) | Acceptor, handshake, `kqueue` watches, service registry, and forwarding handler. |
+| [`structure/uthash.h`](structure/uthash.h) | Hash-table macros used for module-name lookup. |
+| [`main.c`](main.c) | Threaded socket and module-to-module demonstrations. |
 
-## Protocol work in progress
-
-The handshake code currently expects two native C `int` lengths, followed by the service-name bytes and parameter-description bytes. It adds string terminators locally after reading those fields.
-
-The proposed request header contains three `uint32_t` fields: `correlation_id`, `target_service_size`, and `payload_size`. The encoding of multiple target services, payload handling, and response routing still need to be defined and implemented.
-
-This is an experimental format. The handshake currently reads a native struct directly, with no byte-order conversion or protocol versioning. It is not yet a portable wire protocol.
-
-## Current limitations
-
-- `soc_read` and `soc_write` loop over partial transfers, but remain blocking. A readable-socket notification does not guarantee that an entire handshake has arrived.
-- Handshake length limits and read-result checks are unfinished. The `kevent` wait timeout does not enforce a deadline for each connection.
-- Registry allocation and initialization are missing. The handshake function currently returns immediately while the registry pointer is null.
-- Disconnect cleanup needs correction: one path frees a socket before passing it to the queue-removal helper. String ownership and synchronization also need to be settled before registry integration.
-- TLS, authentication, load balancing, retries, and delivery guarantees are not implemented. The current example does not demonstrate distributed request processing or throughput scaling.
-
-## Next steps
-
-1. Implement the service registry with explicit ownership of sockets and strings.
-2. Complete registration and demonstrate one request and response between a client and a named service.
-3. Define request framing, correlation handling, and the representation of multiple target services.
-4. Replace blocking handshake reads with incremental connection state, validate lengths, and handle deadlines and disconnects.
-5. Add repeatable tests for fragmented messages, invalid lengths, disconnects, and concurrent clients.
