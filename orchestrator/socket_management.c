@@ -1,23 +1,28 @@
 #include "socket_management.h"
-#include "socket_storage.h"
 #include "../communication/socket.h"
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <sys/event.h>
+#include "../structure/uthash.h"
 
 #define MAX_EVENTS 64
+
+
+typedef struct{
+	soc_client_socket *soc;
+	char *module_name;
+	char **module_params;
+	uint8_t *msg;
+	size_t msg_size;
+	size_t received;
+	UT_hash_handle hh;
+} soc_management_socket_entry;
 
 
 static int unverified_queue_fd = -1;
 static int verified_queue_fd = -1;
 static soc_client_socket *client_socket_tbl[8];
-static soc_storage_entry *soc_storage = NULL;
-
-typedef struct {
-	int module_name_length;
-	int module_params_length;
-}  soc_management_handshake_header;
+static soc_management_socket_entry *service_map = NULL;
 
 
 int soc_management_initiate_unverified_socket_queue(){
@@ -89,7 +94,7 @@ static int soc_management_withdraw_watch_socket(const soc_client_socket *soc, in
 
 
 void *soc_management_handshake(void *arg){
-	if (unverified_queue_fd == -1 || verified_queue_fd == -1 || soc_storage == NULL) {
+	if (unverified_queue_fd == -1 || verified_queue_fd == -1) {
 		return NULL;
 	}
 
@@ -130,7 +135,12 @@ void *soc_management_handshake(void *arg){
 			// todo: check if the reading is success
 			module_params[handshake_header.module_params_length] = '\0';
 
-			soc_storage_append(soc, module_name, module_params);
+			soc_management_socket_entry *entry = malloc(sizeof(soc_management_socket_entry));
+			entry -> module_name = malloc(strlen(module_name));
+			strcpy(module_name, entry->module_name);
+
+
+			HASH_ADD_STR(service_map, module_name, entry);
 			soc_management_register_watch_socket(soc, verified_queue_fd);
 			soc_management_withdraw_watch_socket(soc, unverified_queue_fd);
 		}
@@ -140,6 +150,18 @@ void *soc_management_handshake(void *arg){
 
 
 void *soc_management_request_handler(void* arg) {
+	if (verified_queue_fd == -1) return NULL;
+
+	struct kevent active_events[MAX_EVENTS];
+
+	while(1) {
+		int ready_count = kevent(verified_queue_fd, NULL, 0, active_events, MAX_EVENTS, NULL);
+		for (int i = 0; i < ready_count; i++) {
+			soc_client_socket *soc = (soc_client_socket *) active_events[i].udata;
+
+
+		}
+	}
 	return NULL;
 }
 

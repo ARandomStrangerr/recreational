@@ -3,6 +3,7 @@
 
 
 #include <stdint.h>
+#include <stdlib.h>
 
 
 typedef struct __attribute__((__packed__)) {
@@ -10,6 +11,12 @@ typedef struct __attribute__((__packed__)) {
     uint32_t target_service_size;
     uint32_t payload_size;
 } soc_management_header;
+
+
+typedef struct {
+	size_t module_name_length;
+	size_t module_params_length;
+}  soc_management_handshake_header;
 
 
 /**
