@@ -1,6 +1,7 @@
 #include "communication/socket.h"
 #include "orchestrator/socket_management.h"
 #include <assert.h>
+#include <stddef.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -68,10 +69,13 @@ void *test_orchestrator(void *args) {
 	int timeout = 1;
 	pthread_create(&handshake_thread, NULL, soc_management_handshake, &timeout);
 	printf("Test3: spind up handshake\n");
+	pthread_t request_hander_thread;
+	pthread_create(&request_hander_thread, NULL, soc_management_request_handler, NULL);
 	sleep(5);
+	return NULL;
 }
 
-void *test_client_socket_orchestrator(void *args) {
+void *test_module_1(void *args) {
 	soc_client_socket *soc;
 	int create_status = soc_create_connect_client_socket(&soc, SOC_TCP, SOC_IPV4, "127.0.0.1", 8080);
 	assert(create_status >= 0);
@@ -82,10 +86,45 @@ void *test_client_socket_orchestrator(void *args) {
 	handshake_header.module_name_length = 13;
 	handshake_header.module_params_length = 11;
 	soc_write(soc, &handshake_header, sizeof(handshake_header));
-	printf("Test4: seent header to the sever");
+	printf("Test4: send header to the orchestrator\n");
 	soc_write(soc, module_name, 13);
 	soc_write(soc, module_params, 11);
+	printf("Test4: send module name and params to the orchestrator\n");
+	sleep(4);
+	char receive_module_name[] = "test_module_2";
+	size_t receive_module_name_size = strlen(receive_module_name);
+	char data[] = "hello 1234 from module 1";
+	size_t data_size = strlen(data);
+	soc_write(soc, &receive_module_name_size, sizeof(size_t));
+	soc_write(soc, receive_module_name, receive_module_name_size);
+	soc_write(soc, &data_size, sizeof(size_t));
+	soc_write(soc, data, data_size);
 	sleep(10);
+	return NULL;
+}
+
+void *test_moduele_2 (void *arg) {
+	soc_client_socket *soc;
+	int create_status = soc_create_connect_client_socket(&soc, SOC_TCP, SOC_IPV4, "127.0.0.1", 8080);
+	assert(create_status >= 0);
+	printf("Test5: connected to orchestrator\n");
+	char module_name[] = "test_module_2";
+	char module_params[] = "a,b,c,d,e,f";
+	soc_management_handshake_header handshake_header;
+	handshake_header.module_name_length = 13;
+	handshake_header.module_params_length = 11;
+	soc_write(soc, &handshake_header, sizeof(handshake_header));
+	printf("Test5: send header to the orchestartor\n");
+	soc_write(soc, module_name, 13);
+	soc_write(soc, module_params, 11);
+	printf("Test5: send module name and params to the orchestrator\n");
+	size_t incoming_data_len;
+	soc_read(soc, &incoming_data_len, sizeof(incoming_data_len));
+	char data[incoming_data_len + 1];
+	soc_read(soc, data, incoming_data_len);
+	data[incoming_data_len] = '\0';
+	printf("%s\n", data);
+
 }
 
 int main(){
@@ -105,9 +144,12 @@ int main(){
 	pthread_t orchestrator_thread;
 	pthread_create(&orchestrator_thread, NULL, test_orchestrator, NULL);
 	sleep(1);
-	pthread_t client_orchestrator_thread;
-	pthread_create(&client_orchestrator_thread, NULL, test_client_socket_orchestrator, NULL);
+	pthread_t module_1;
+	pthread_create(&module_1, NULL, test_module_1, NULL);
+	pthread_t module_2;
+	pthread_create(&module_2, NULL, test_moduele_2, NULL);
+	pthread_join(module_1, NULL);
+	pthread_join(module_2, NULL);
 	pthread_join(orchestrator_thread, NULL);
-	pthread_join(client_orchestrator_thread, NULL);
 	return 1;
-}
+};

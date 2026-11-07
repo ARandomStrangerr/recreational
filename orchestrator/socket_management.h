@@ -77,13 +77,6 @@ void *soc_management_handshake(void *);
  * function complies with thread signature.
  * this function will handle request from registered sockets.
  */
-void *soc_management_request_hander(void *);
-
-/**
- * @brief
- * function complies with thread signature.
- * this function listen to verified sockets and have a thread handle the request.
- */
-void *soc_management_router(void *);
+void *soc_management_request_handler(void *);
 
 #endif

@@ -1,5 +1,6 @@
 #include "socket_management.h"
 #include "../communication/socket.h"
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 #include <sys/event.h>
@@ -136,9 +137,10 @@ void *soc_management_handshake(void *arg){
 			module_params[handshake_header.module_params_length] = '\0';
 
 			soc_management_socket_entry *entry = malloc(sizeof(soc_management_socket_entry));
-			entry -> module_name = malloc(strlen(module_name));
-			strcpy(module_name, entry->module_name);
-
+			entry -> module_name = malloc(strlen(module_name) + 1);
+			strcpy(entry->module_name, module_name);
+			entry -> module_name[strlen(module_name)] = '\0';
+			entry -> soc = soc;
 
 			HASH_ADD_STR(service_map, module_name, entry);
 			soc_management_register_watch_socket(soc, verified_queue_fd);
@@ -156,10 +158,29 @@ void *soc_management_request_handler(void* arg) {
 
 	while(1) {
 		int ready_count = kevent(verified_queue_fd, NULL, 0, active_events, MAX_EVENTS, NULL);
+
 		for (int i = 0; i < ready_count; i++) {
 			soc_client_socket *soc = (soc_client_socket *) active_events[i].udata;
 
+			size_t msg_size;
+			soc_read(soc, &msg_size, sizeof(msg_size));
 
+			char module_name[msg_size + 1];
+			soc_read(soc, module_name, msg_size);
+			module_name[msg_size] = '\0';
+
+			soc_read(soc, &msg_size, sizeof(msg_size));
+
+			char data[msg_size + 1];
+			soc_read(soc, data, msg_size);
+			data[msg_size] = '\0';
+
+			soc_management_socket_entry *entry;
+
+			HASH_FIND_STR(service_map, module_name, entry);
+			printf("retreated socket\n");
+			soc_write(entry->soc, &msg_size, sizeof(msg_size));
+			soc_write(entry->soc, data, msg_size);
 		}
 	}
 	return NULL;
