@@ -95,10 +95,12 @@ static int soc_management_withdraw_watch_socket(const soc_client_socket *soc, in
 
 
 void *soc_management_handshake(void *arg){
+	// ----- check verified and unverified queue is intialized -----
 	if (unverified_queue_fd == -1 || verified_queue_fd == -1) {
 		return NULL;
 	}
 
+	// ----- convert to int -----
 	int amount_timeout = *((int *) arg); // convert to integer
 
 	struct kevent active_events[MAX_EVENTS]; // array to hold the viable sockets
