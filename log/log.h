@@ -12,7 +12,7 @@ typedef enum {
 /**
  * @brief ~ consumer function. a thread consuming
  */
-void *log_init(void *);
+void *log_read(void *);
 
 /**
  * @brief ~ producer function. threads will call and pass message into this thread
