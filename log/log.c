@@ -1,9 +1,13 @@
+#ifndef MSG_LOG_SIZE
+#define MSG_LOG_SIZE 512
+#endif
+
 #include "log.h"
+#include <stddef.h>
 #include <string.h>
 #include <pthread.h>
 #include <stdlib.h>
-
-#define MSG_LOG_SIZE 512
+#include <stdio.h>
 
 static char msg_log_buffer[MSG_LOG_SIZE];
 static size_t log_msg_size = 0;
@@ -31,6 +35,15 @@ void *log_read(void *arg) {
 
 		// ----- release the thread lockdown -----
 		pthread_mutex_unlock(&msg_log_mutex);
+
+		// ----- start reading of string -----
+		size_t offset = 0;
+		while (offset < length) {
+			const char *current_msg = temp_buffer + offset;
+			size_t msg_len = strlen(temp_buffer);
+			printf("%s\n", current_msg);
+			offset += msg_len + 1;
+		}
 	}
 }
 
